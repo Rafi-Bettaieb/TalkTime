@@ -1,4 +1,5 @@
-import React from "react";
+import { Avatar } from "@chakra-ui/avatar";
+import { Tooltip } from "@chakra-ui/tooltip";
 import ScrollableFeed from "react-scrollable-feed";
 import {
   isLastMessage,
@@ -7,10 +8,59 @@ import {
   isSameUser,
 } from "../config/ChatLogics";
 import { ChatState } from "../Context/ChatProvider";
-import { Avatar, Tooltip } from "@chakra-ui/react";
+import Lottie from "react-lottie";
+import animationData from "../animation/typing.json"; 
 
-const ScrollableChat = ({ messages }) => {
+const ScrollableChat = ({ messages, istyping }) => {
   const { user } = ChatState();
+
+  const defaultOptions = {
+    loop: true,
+    autoplay: true,
+    animationData: animationData,
+    rendererSettings: {
+      preserveAspectRatio: "xMidYMid slice",
+    },
+  };
+
+  const renderContent = (m) => {
+    let contentUrl = m.content;
+    if (m.content && m.content.includes("uploads")) {
+        const parts = m.content.split("uploads");
+        contentUrl = "uploads" + parts[parts.length - 1];
+    }
+    if(contentUrl) {
+      contentUrl = `http://localhost:5000/${contentUrl.replace(/\\/g, "/")}`;
+    }
+
+    if (m.contentType === "image") {
+        return (
+            <img 
+                src={contentUrl} 
+                alt={m.fileName || "image"} 
+                style={{maxWidth: "250px", borderRadius: "8px", cursor: "pointer"}}
+                onClick={() => window.open(contentUrl, "_blank")}
+            />
+        );
+    } else if (m.contentType === "video") {
+        return (
+            <video 
+                src={contentUrl} 
+                controls 
+                style={{maxWidth: "300px", borderRadius: "8px"}} 
+            />
+        );
+    } else if (m.contentType === "application") {
+        return (
+            <a href={contentUrl} target="_blank" rel="noreferrer" style={{display: "flex", alignItems: "center", gap: "5px", color: "black", textDecoration: "none", background: "rgba(255,255,255,0.5)", padding: "5px 10px", borderRadius: "5px"}}>
+                <span style={{fontSize: "20px"}}>📄</span> 
+                <span style={{textDecoration: "underline"}}>{m.fileName || "Download File"}</span>
+            </a>
+        );
+    } else {
+        return m.content;
+    }
+  };
 
   return (
     <ScrollableFeed>
@@ -35,17 +85,40 @@ const ScrollableChat = ({ messages }) => {
                 backgroundColor: `${
                   m.sender._id === user._id ? "#BEE3F8" : "#B9F5D0"
                 }`,
+                marginLeft: isSameSenderMargin(messages, m, i, user._id),
+                marginTop: isSameUser(messages, m, i, user._id) ? 3 : 10,
                 borderRadius: "20px",
                 padding: "5px 15px",
                 maxWidth: "75%",
-                marginLeft: isSameSenderMargin(messages, m, i, user._id),
-                marginTop: isSameUser(messages, m, i, user._id) ? 3 : 10,
               }}
             >
-              {m.content}
+              {renderContent(m)}
             </span>
           </div>
         ))}
+
+      {istyping && (
+         <div style={{ display: "flex", marginTop: "10px", marginLeft: "10px" }}>
+             <div
+                 style={{
+                     backgroundColor: "#B9F5D0",
+                     borderRadius: "20px",
+                     padding: "10px 15px",
+                     width: "70px",
+                     display: "flex",
+                     alignItems: "center",
+                     justifyContent: "center"
+                 }}
+             >
+                 <Lottie
+                    options={defaultOptions}
+                    width={40}
+                    height={20}
+                    style={{ margin: 0 }}
+                  />
+             </div>
+         </div>
+      )}
     </ScrollableFeed>
   );
 };

@@ -23,21 +23,20 @@ const sendMessage = asyncHandler(async (req, res) => {
   let fileName = "";
 
   if (req.file) {
-    messageContent = "uploads/" + req.file.filename;
+    messageContent = req.file.path; 
     fileName = req.file.originalname;
 
     if (req.file.mimetype.startsWith("image")) {
         messageType = "image";
     } else if (req.file.mimetype.startsWith("video")) {
         messageType = "video";
-    } else if (req.file.mimetype === "application/pdf") {
-        messageType = "application";
     } else {
-        messageType = "text";
+        messageType = "application";
     }
   }
 
   if (!messageContent && !req.file) {
+    console.log("Invalid data passed into request");
     return res.sendStatus(400);
   }
 

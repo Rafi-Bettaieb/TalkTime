@@ -24,35 +24,27 @@ const ScrollableChat = ({ messages, istyping }) => {
   };
 
   const renderContent = (m) => {
-    let contentUrl = m.content;
-    if (m.content && m.content.includes("uploads")) {
-        const parts = m.content.split("uploads");
-        contentUrl = "uploads" + parts[parts.length - 1];
-    }
-    if(contentUrl) {
-      contentUrl = `http://localhost:5000/${contentUrl.replace(/\\/g, "/")}`;
-    }
 
     if (m.contentType === "image") {
         return (
             <img 
-                src={contentUrl} 
+                src={m.content} 
                 alt={m.fileName || "image"} 
                 style={{maxWidth: "250px", borderRadius: "8px", cursor: "pointer"}}
-                onClick={() => window.open(contentUrl, "_blank")}
+                onClick={() => window.open(m.content, "_blank")}
             />
         );
     } else if (m.contentType === "video") {
         return (
             <video 
-                src={contentUrl} 
+                src={m.content} 
                 controls 
                 style={{maxWidth: "300px", borderRadius: "8px"}} 
             />
         );
     } else if (m.contentType === "application") {
         return (
-            <a href={contentUrl} target="_blank" rel="noreferrer" style={{display: "flex", alignItems: "center", gap: "5px", color: "black", textDecoration: "none", background: "rgba(255,255,255,0.5)", padding: "5px 10px", borderRadius: "5px"}}>
+            <a href={m.content} target="_blank" rel="noreferrer" style={{display: "flex", alignItems: "center", gap: "5px", color: "black", textDecoration: "none", background: "rgba(255,255,255,0.5)", padding: "5px 10px", borderRadius: "5px"}}>
                 <span style={{fontSize: "20px"}}>📄</span> 
                 <span style={{textDecoration: "underline"}}>{m.fileName || "Download File"}</span>
             </a>

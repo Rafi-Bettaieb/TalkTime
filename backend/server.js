@@ -4,11 +4,14 @@ const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const messageRoutes = require("./routes/messageRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const path = require("path");
 
 const app = express();
-dotenv.config();
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 connectDB();
 
 app.use(express.json()); 
@@ -20,6 +23,7 @@ app.get("/", (req, res) => {
 app.use("/api/user", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/message", messageRoutes);
+app.use("/api/ai", aiRoutes); 
 
 const uploadsPath = path.join(__dirname, "uploads");
 
@@ -67,6 +71,6 @@ io.on("connection", (socket) => {
 
   socket.off("setup", () => {
     console.log("USER DISCONNECTED");
-    socket.leave(userData._id);
+    socket.leave(userData._id); 
   });
 });

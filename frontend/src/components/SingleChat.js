@@ -1,12 +1,12 @@
 import { FormControl } from "@chakra-ui/form-control";
 import { Input } from "@chakra-ui/input";
-import { Box, Text } from "@chakra-ui/layout";
+import { Box, Text, Button } from "@chakra-ui/react";
 import "./styles.css";
 import { IconButton, Spinner, useToast } from "@chakra-ui/react";
 import { getSender, getSenderFull } from "../config/ChatLogics";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { ArrowBackIcon, AttachmentIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, AttachmentIcon, StarIcon } from "@chakra-ui/icons"; // [UPDATED] Added StarIcon
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 
@@ -24,8 +24,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   const [socketConnected, setSocketConnected] = useState(false);
   const [typing, setTyping] = useState(false);
   const [istyping, setIsTyping] = useState(false);
-  const toast = useToast();
   
+  const [suggestions, setSuggestions] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  
+  const toast = useToast();
   const fileInputRef = useRef(null); 
 
   const { selectedChat, setSelectedChat, user, notification, setNotification } = ChatState();
@@ -53,9 +56,65 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     }
   };
 
+  const handleManualAiGen = () => {
+    const lastIncomingMessage = [...messages].reverse().find(
+      (m) => m.sender._id !== user._id && !m.fileName 
+    );
+
+    if (!lastIncomingMessage) {
+      toast({
+        title: "No message to reply to!",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom",
+      });
+      return;
+    }
+
+    setAiLoading(true);
+    fetchSuggestions(lastIncomingMessage.content);
+  };
+
+  const fetchSuggestions = async (messageText) => {
+    try {
+      const config = {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+      
+      const { data } = await axios.post(
+        "/api/ai/suggest",
+        { messageReceived: messageText },
+        config
+      );
+      
+      setSuggestions(data);
+      setAiLoading(false);
+    } catch (error) {
+      console.error("Failed to fetch suggestions");
+      setAiLoading(false);
+      toast({
+        title: "AI Busy",
+        description: "Could not generate suggestions right now.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setNewMessage(suggestion);
+    setSuggestions([]); 
+  };
+
   const sendMessage = async (event) => {
     if (event.key === "Enter" && newMessage) {
       socket.emit("stop typing", selectedChat._id);
+      setSuggestions([]); 
       try {
         const config = {
           headers: {
@@ -123,10 +182,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
   useEffect(() => {
     fetchMessages();
     selectedChatCompare = selectedChat;
+    setSuggestions([]); 
   }, [selectedChat]);
 
   useEffect(() => {
-    socket.on("message recieved", (newMessageRecieved) => {
+    const handleMessageReceived = (newMessageRecieved) => {
       if (!selectedChatCompare || selectedChatCompare._id !== newMessageRecieved.chat._id) {
         if (!notification.includes(newMessageRecieved)) {
           setNotification([newMessageRecieved, ...notification]);
@@ -135,11 +195,22 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
       } else {
         setMessages([...messages, newMessageRecieved]);
       }
-    });
+    };
+
+    socket.on("message recieved", handleMessageReceived);
+
+    return () => {
+      socket.off("message recieved", handleMessageReceived);
+    };
   });
 
   const typingHandler = (e) => {
     setNewMessage(e.target.value);
+    
+    if(e.target.value.length > 0 && suggestions.length > 0) {
+        setSuggestions([]);
+    }
+
     if (!socketConnected) return;
 
     if (!typing) {
@@ -212,6 +283,49 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 <ScrollableChat messages={messages} istyping={istyping} />
               </div>
             )}
+            
+            {suggestions.length > 0 && (
+              <Box 
+                display="flex"
+                flexDirection="column" 
+                width="100%"
+                mb={3}
+                p={2}
+                bg="transparent"
+              >
+                <Text fontSize="sm" color="gray.600" ml={2} mb={2} fontWeight="bold">
+                  Suggestions:
+                </Text>
+                
+                {suggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    width="100%"
+                    variant="solid"
+                    colorScheme="whiteAlpha"
+                    bg="white"
+                    color="black"
+                    border="1px solid"
+                    borderColor="gray.300"
+                    size="lg"
+                    mb={3}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    justifyContent="flex-start" 
+                    textAlign="left"
+                    whiteSpace="normal" 
+                    height="auto"
+                    py={4}
+                    px={4}
+                    borderRadius="xl"
+                    boxShadow="sm"
+                    _hover={{ bg: "gray.50" }}
+                    style={{ wordBreak: "break-word" }}
+                  >
+                    <Text fontSize="md">{suggestion}</Text>
+                  </Button>
+                ))}
+              </Box>
+            )}
 
             <FormControl
               onKeyDown={sendMessage}
@@ -221,8 +335,6 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
               display="flex" 
               alignItems="center"
             >
-              
-              
               <input 
                 type="file" 
                 style={{ display: "none" }} 
@@ -234,6 +346,17 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                   onClick={() => fileInputRef.current.click()} 
                   mr={2}
                   bg="#E0E0E0"
+                  aria-label="Attach File"
+              />
+
+              <IconButton 
+                  icon={<StarIcon />} 
+                  onClick={handleManualAiGen}
+                  isLoading={aiLoading}
+                  mr={2}
+                  bg="#E0E0E0"
+                  color="purple.500"
+                  aria-label="Generate AI Reply"
               />
 
               <Input

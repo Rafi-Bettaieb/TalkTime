@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
@@ -23,7 +24,6 @@
     "nodemon": "^3.1.7",
     "react-notification-badge": "^1.5.1",
     "react-router-dom": "^6.26.2",
-    "socket.io": "^4.8.0",
-    "soket.io": "^0.0.1-security"
+    "socket.io": "^4.8.0"
   }
 }
